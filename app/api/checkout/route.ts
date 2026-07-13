@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server';
 import { getSupabase, webhookSecret } from '@/lib/supabase';
 import { createPreference } from '@/lib/mercadopago';
-import { PRODUCT, SITE, isMpConfigured } from '@/lib/config';
+import { PRODUCT, isMpConfigured } from '@/lib/config';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
+    // Base do site derivada da requisição — funciona em qualquer domínio
+    // (localhost, preview da Vercel, domínio final) sem configuração.
+    const origin = req.headers.get('origin') || new URL(req.url).origin;
+
     const { name, email, phone } = await req.json();
 
     if (!name?.trim() || !email?.trim()) {
@@ -36,7 +40,7 @@ export async function POST(req: Request) {
         quantity: 1,
         unitPrice: PRODUCT.price,
         buyerEmail: email.trim().toLowerCase(),
-        siteUrl: SITE.url,
+        siteUrl: origin,
       });
       const checkoutUrl = pref.init_point || pref.sandbox_init_point;
       return NextResponse.json({ init_point: checkoutUrl, orderId });
@@ -53,7 +57,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Falha ao processar (demo).' }, { status: 500 });
     }
     return NextResponse.json({
-      init_point: `${SITE.url}/sucesso?order=${orderId}`,
+      init_point: `/sucesso?order=${orderId}`,
       orderId,
       demo: true,
     });
