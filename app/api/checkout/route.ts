@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getSupabaseAdmin } from '@/lib/supabaseAdmin';
+import { getSupabase, webhookSecret } from '@/lib/supabase';
 import { createPreference } from '@/lib/mercadopago';
-import { PRODUCT, SITE } from '@/lib/config';
+import { PRODUCT, SITE, isMpConfigured } from '@/lib/config';
 
 export const runtime = 'nodejs';
 
@@ -13,42 +13,50 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Nome e e-mail são obrigatórios.' }, { status: 400 });
     }
 
-    const supabase = getSupabaseAdmin();
+    const supabase = getSupabase();
 
-    // 1. Cria o pedido (pendente).
-    const { data: order, error: orderErr } = await supabase
-      .from('orders')
-      .insert({
-        buyer_name: name.trim(),
-        buyer_email: email.trim().toLowerCase(),
-        buyer_phone: phone?.trim() || null,
-        amount: PRODUCT.price,
-        currency: 'BRL',
-        status: 'pending',
-      })
-      .select('id')
-      .single();
+    // 1. Cria o pedido (pendente) via RPC segura.
+    const { data: orderId, error: orderErr } = await supabase.rpc('create_order', {
+      p_name: name.trim(),
+      p_email: email.trim().toLowerCase(),
+      p_phone: phone ?? '',
+      p_amount: PRODUCT.price,
+    });
 
-    if (orderErr || !order) {
+    if (orderErr || !orderId) {
       console.error('Erro ao criar pedido:', orderErr);
       return NextResponse.json({ error: 'Falha ao registrar o pedido.' }, { status: 500 });
     }
 
-    // 2. Cria a preferência no Mercado Pago.
-    const pref = await createPreference({
-      orderId: order.id,
-      title: PRODUCT.name,
-      quantity: 1,
-      unitPrice: PRODUCT.price,
-      buyerEmail: email.trim().toLowerCase(),
-      siteUrl: SITE.url,
+    // 2a. Mercado Pago configurado → checkout real.
+    if (isMpConfigured()) {
+      const pref = await createPreference({
+        orderId,
+        title: PRODUCT.name,
+        quantity: 1,
+        unitPrice: PRODUCT.price,
+        buyerEmail: email.trim().toLowerCase(),
+        siteUrl: SITE.url,
+      });
+      const checkoutUrl = pref.init_point || pref.sandbox_init_point;
+      return NextResponse.json({ init_point: checkoutUrl, orderId });
+    }
+
+    // 2b. MODO DEMONSTRAÇÃO → pagamento simulado, código emitido na hora.
+    const { error: issueErr } = await supabase.rpc('confirm_payment_and_issue_code', {
+      p_secret: webhookSecret(),
+      p_order_id: orderId,
+      p_payment_id: 'DEMO',
     });
-
-    // 3. Guarda o id da preferência no pedido.
-    await supabase.from('orders').update({ mp_preference_id: pref.id }).eq('id', order.id);
-
-    const checkoutUrl = pref.init_point || pref.sandbox_init_point;
-    return NextResponse.json({ init_point: checkoutUrl, orderId: order.id });
+    if (issueErr) {
+      console.error('Erro no pagamento simulado:', issueErr);
+      return NextResponse.json({ error: 'Falha ao processar (demo).' }, { status: 500 });
+    }
+    return NextResponse.json({
+      init_point: `${SITE.url}/sucesso?order=${orderId}`,
+      orderId,
+      demo: true,
+    });
   } catch (err) {
     console.error('Checkout falhou:', err);
     const msg = err instanceof Error ? err.message : 'Erro inesperado.';
