@@ -1,39 +1,28 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { formatBRL } from '@/lib/config';
 import { Lock } from '../components/icons';
 
+const STORAGE_KEY = 'iasis_checkout_data';
+
 export function BuyForm({ price, demo }: { price: number; demo: boolean }) {
+  const router = useRouter();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function handleBuy(e: React.FormEvent) {
+  function handleContinue(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     if (!name.trim() || !email.trim()) {
       setError('Preencha nome e e-mail para continuar.');
       return;
     }
-    setLoading(true);
-    try {
-      const res = await fetch('/api/checkout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone }),
-      });
-      const data = await res.json();
-      if (!res.ok || !data.init_point) {
-        throw new Error(data.error || 'Não foi possível iniciar o pagamento.');
-      }
-      window.location.href = data.init_point;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erro inesperado.');
-      setLoading(false);
-    }
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ name: name.trim(), email: email.trim(), phone: phone.trim() }));
+    router.push('/checkout');
   }
 
   return (
@@ -46,7 +35,7 @@ export function BuyForm({ price, demo }: { price: number; demo: boolean }) {
         {demo ? 'demonstração — sem cobrança real' : 'ou parcelado no cartão via Mercado Pago'}
       </div>
 
-      <form onSubmit={handleBuy} style={{ marginTop: 24 }}>
+      <form onSubmit={handleContinue} style={{ marginTop: 24 }}>
         {error && (
           <div className="error-box">
             <Lock size={17} /> {error}
@@ -66,12 +55,8 @@ export function BuyForm({ price, demo }: { price: number; demo: boolean }) {
           <input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(00) 00000-0000" autoComplete="tel" />
         </div>
 
-        <button type="submit" className="btn btn-primary btn-block btn-lg" disabled={loading} style={{ marginTop: 6 }}>
-          {loading
-            ? 'Processando…'
-            : demo
-              ? 'Finalizar compra (demonstração)'
-              : 'Pagar com Mercado Pago'}
+        <button type="submit" className="btn btn-primary btn-block btn-lg" style={{ marginTop: 6 }}>
+          Ir para pagamento
         </button>
 
         <div className="pay-methods">
