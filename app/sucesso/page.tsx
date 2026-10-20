@@ -49,6 +49,9 @@ export default async function Sucesso({ searchParams }: { searchParams: { order?
                 <li>Toque em “Criar conta” e informe o código de ativação acima.</li>
                 <li>Configure seus medicamentos e conecte o dispenser. Pronto!</li>
               </ol>
+              <Link href="/app" className="btn btn-primary btn-block" style={{ marginTop: 18 }}>
+                Baixar o aplicativo
+              </Link>
             </div>
           </>
         ) : pending ? (

@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/como-funciona', label: 'Como funciona' },
   { href: '/#especificacoes', label: 'Especificações' },
   { href: '/#faq', label: 'Dúvidas' },
+  { href: '/app', label: 'Baixar app' },
 ];
 
 export function Nav() {

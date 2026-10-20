@@ -19,6 +19,18 @@ export const SITE = {
   url: process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000',
 } as const;
 
+// App Android. O APK é publicado como "release" do repositório do app no
+// GitHub, e o link "latest/download" sempre aponta para a versão mais nova:
+// lançar uma versão nova do app não exige mexer no site.
+export const APP = {
+  apkUrl:
+    process.env.NEXT_PUBLIC_APK_URL ??
+    'https://github.com/Carriscar1/Iasis-app/releases/latest/download/IASIS.apk',
+  version: '1.0.0',
+  minAndroid: 'Android 6.0 ou superior',
+  pageUrl: 'https://iasis-website-nu.vercel.app/app',
+} as const;
+
 // true quando o Mercado Pago real está configurado. Sem token válido, a loja
 // entra em MODO DEMONSTRAÇÃO: o pagamento é simulado (sem cobrança) e o código
 // de ativação é emitido na hora — igual ao simulador do ESP32 no app.
