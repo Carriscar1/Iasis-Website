@@ -26,7 +26,7 @@ export const APP = {
   apkUrl:
     process.env.NEXT_PUBLIC_APK_URL ??
     'https://github.com/Carriscar1/Iasis-app/releases/latest/download/IASIS.apk',
-  version: '1.0.6',
+  version: '1.0.7',
   minAndroid: 'Android 6.0 ou superior',
   pageUrl: 'https://iasis-website-nu.vercel.app/app',
 } as const;
